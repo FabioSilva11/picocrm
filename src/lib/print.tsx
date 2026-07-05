@@ -1,21 +1,24 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 export function usePrint() {
   return useCallback(() => {
-    window.print();
+    if (typeof window !== "undefined") window.print();
   }, []);
 }
 
 export function PrintArea({ children }: { children: React.ReactNode }) {
-  if (typeof document === "undefined") return null;
-  const el = document.getElementById("printArea");
+  const [el, setEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setEl(document.getElementById("printArea"));
+  }, []);
   if (!el) return null;
   return createPortal(children, el);
 }
 
 export function PrintHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  const now = new Date().toLocaleString("pt-BR");
+  const [now, setNow] = useState("");
+  useEffect(() => setNow(new Date().toLocaleString("pt-BR")), []);
   return (
     <div style={{ borderBottom: "2px solid #111827", marginBottom: 18, paddingBottom: 12 }}>
       <p style={{ fontSize: 12, fontWeight: 700, margin: "0 0 4px" }}>DOMINA</p>
