@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtime } from "@/hooks/useRealtime";
 import type { DbSalesOrder, DbCustomer } from "@/lib/db";
 
 export const Route = createFileRoute("/vendas")({

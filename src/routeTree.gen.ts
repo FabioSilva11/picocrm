@@ -17,6 +17,7 @@ import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as CargaRouteImport } from './routes/carga'
 import { Route as CalculadoraRouteImport } from './routes/calculadora'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VendasIdRouteImport } from './routes/vendas.$id'
 import { Route as ProducaoIdRouteImport } from './routes/producao.$id'
 
 const VendasRoute = VendasRouteImport.update({
@@ -59,6 +60,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VendasIdRoute = VendasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => VendasRoute,
+} as any)
 const ProducaoIdRoute = ProducaoIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -73,8 +79,9 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof ClientesRoute
   '/estoque': typeof EstoqueRoute
   '/producao': typeof ProducaoRouteWithChildren
-  '/vendas': typeof VendasRoute
+  '/vendas': typeof VendasRouteWithChildren
   '/producao/$id': typeof ProducaoIdRoute
+  '/vendas/$id': typeof VendasIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -84,8 +91,9 @@ export interface FileRoutesByTo {
   '/clientes': typeof ClientesRoute
   '/estoque': typeof EstoqueRoute
   '/producao': typeof ProducaoRouteWithChildren
-  '/vendas': typeof VendasRoute
+  '/vendas': typeof VendasRouteWithChildren
   '/producao/$id': typeof ProducaoIdRoute
+  '/vendas/$id': typeof VendasIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -96,8 +104,9 @@ export interface FileRoutesById {
   '/clientes': typeof ClientesRoute
   '/estoque': typeof EstoqueRoute
   '/producao': typeof ProducaoRouteWithChildren
-  '/vendas': typeof VendasRoute
+  '/vendas': typeof VendasRouteWithChildren
   '/producao/$id': typeof ProducaoIdRoute
+  '/vendas/$id': typeof VendasIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/producao'
     | '/vendas'
     | '/producao/$id'
+    | '/vendas/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/producao'
     | '/vendas'
     | '/producao/$id'
+    | '/vendas/$id'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/producao'
     | '/vendas'
     | '/producao/$id'
+    | '/vendas/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -143,7 +155,7 @@ export interface RootRouteChildren {
   ClientesRoute: typeof ClientesRoute
   EstoqueRoute: typeof EstoqueRoute
   ProducaoRoute: typeof ProducaoRouteWithChildren
-  VendasRoute: typeof VendasRoute
+  VendasRoute: typeof VendasRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -204,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vendas/$id': {
+      id: '/vendas/$id'
+      path: '/$id'
+      fullPath: '/vendas/$id'
+      preLoaderRoute: typeof VendasIdRouteImport
+      parentRoute: typeof VendasRoute
+    }
     '/producao/$id': {
       id: '/producao/$id'
       path: '/$id'
@@ -226,6 +245,17 @@ const ProducaoRouteWithChildren = ProducaoRoute._addFileChildren(
   ProducaoRouteChildren,
 )
 
+interface VendasRouteChildren {
+  VendasIdRoute: typeof VendasIdRoute
+}
+
+const VendasRouteChildren: VendasRouteChildren = {
+  VendasIdRoute: VendasIdRoute,
+}
+
+const VendasRouteWithChildren =
+  VendasRoute._addFileChildren(VendasRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalculadoraRoute: CalculadoraRoute,
@@ -234,7 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientesRoute: ClientesRoute,
   EstoqueRoute: EstoqueRoute,
   ProducaoRoute: ProducaoRouteWithChildren,
-  VendasRoute: VendasRoute,
+  VendasRoute: VendasRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
