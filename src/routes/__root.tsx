@@ -120,7 +120,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppLayout />
+      <PasswordGate>
+        <AppLayout />
+      </PasswordGate>
       <Toaster position="top-right" richColors closeButton />
     </QueryClientProvider>
   );
