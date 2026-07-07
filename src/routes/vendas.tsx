@@ -20,6 +20,7 @@ function money(cents: number) {
 
 function Vendas() {
   const qc = useQueryClient();
+  useRealtime("sales_orders", [["sales_orders"]]);
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["sales_orders"],
     queryFn: async () => {
