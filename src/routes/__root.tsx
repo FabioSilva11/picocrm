@@ -13,6 +13,7 @@ import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppLayout } from "@/components/AppLayout";
+import { PasswordGate } from "@/components/PasswordGate";
 
 function NotFoundComponent() {
   return (
