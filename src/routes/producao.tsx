@@ -32,10 +32,20 @@ function Producao() {
 
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("production_orders").update({ status }).eq("id", id);
-      if (error) throw error;
+      if (status === "concluido") {
+        const { error } = await supabase.rpc("complete_production_order", { _order_id: id });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("production_orders").update({ status }).eq("id", id);
+        if (error) throw error;
+      }
     },
-    onSuccess: () => { toast.success("Status atualizado"); qc.invalidateQueries({ queryKey: ["production_orders"] }); },
+    onSuccess: (_d, v) => {
+      toast.success(v.status === "concluido" ? "Ordem concluída — estoque baixado" : "Status atualizado");
+      qc.invalidateQueries({ queryKey: ["production_orders"] });
+      qc.invalidateQueries({ queryKey: ["stock"] });
+      qc.invalidateQueries({ queryKey: ["movements"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
