@@ -4,10 +4,6 @@ import {
   LayoutDashboard,
   PackageSearch,
   Truck,
-  Warehouse,
-  Factory,
-  Users,
-  ShoppingCart,
 } from "lucide-react";
 
 const nav = [
@@ -15,10 +11,6 @@ const nav = [
   { to: "/calculadora", label: "Calculadora", icon: Calculator },
   { to: "/carga", label: "Carga", icon: Truck },
   { to: "/catalogo", label: "Catálogo", icon: PackageSearch },
-  { to: "/estoque", label: "Estoque", icon: Warehouse },
-  { to: "/producao", label: "Produção", icon: Factory },
-  { to: "/clientes", label: "Clientes", icon: Users },
-  { to: "/vendas", label: "Vendas", icon: ShoppingCart },
 ] as const;
 
 export function AppLayout() {
@@ -30,7 +22,7 @@ export function AppLayout() {
         <div className="border-b border-white/10 px-5 py-5">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">DOMINA</p>
           <h1 className="mt-1 text-xl font-black leading-tight">CRM de Peças</h1>
-          <p className="mt-1 text-xs text-white/60">Calculadora, estoque e vendas</p>
+          <p className="mt-1 text-xs text-white/60">Calculadora e gestão de peças</p>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
           {nav.map(({ to, label, icon: Icon }) => {
