@@ -118,7 +118,7 @@ function Vendas() {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted-foreground">Itens do pedido e valor serão adicionados na próxima iteração.</p>
+      <p className="text-xs text-muted-foreground">Clique no cliente para abrir o pedido e adicionar itens com preço.</p>
     </div>
   );
 }
