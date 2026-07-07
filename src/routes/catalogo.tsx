@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { catalogItemSchema, normalize } from "@/lib/db";
 import { useRealtime } from "@/hooks/useRealtime";
 import { toCSV, downloadCSV, parseCSV } from "@/lib/csv";
+import { sourceTone, typeTone, tensionTone, defaultTone } from "@/lib/badges";
 
 export const Route = createFileRoute("/catalogo")({
   head: () => ({
@@ -34,12 +35,6 @@ interface CatalogRow {
 }
 
 type Draft = Omit<CatalogRow, "id">;
-
-const sourceTone: Record<string, string> = {
-  Ventilador: "bg-primary/10 text-primary",
-  Motor: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-  Estoque: "bg-sky-500/10 text-sky-700 dark:text-sky-400",
-};
 
 const FONTES = ["Ventilador", "Motor", "Estoque"];
 
@@ -80,12 +75,20 @@ function Catalogo() {
 
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("");
+  const [filterTension, setFilterTension] = useState("");
+  const [filterSize, setFilterSize] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [creating, setCreating] = useState(false);
   const [newRow, setNewRow] = useState<Draft>(emptyDraft());
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["catalog_items"] });
+
+  // Opções únicas para chips
+  const uniqueTensions = useMemo(() =>
+    [...new Set(items.map((i) => i.tensao).filter(Boolean))].sort(), [items]);
+  const uniqueSizes = useMemo(() =>
+    [...new Set(items.map((i) => i.tamanho).filter((x): x is number => x != null))].sort((a, b) => a - b), [items]);
 
   const createMut = useMutation({
     mutationFn: async (row: Draft) => {
@@ -134,6 +137,8 @@ function Catalogo() {
     const q = normalize(search);
     return items.filter((it) => {
       if (source && it.fonte !== source) return false;
+      if (filterTension && it.tensao !== filterTension) return false;
+      if (filterSize && it.tamanho !== Number(filterSize)) return false;
       if (!q) return true;
       return (
         normalize(it.codigo).includes(q) ||
@@ -143,7 +148,7 @@ function Catalogo() {
         normalize(it.tensao).includes(q)
       );
     });
-  }, [items, search, source]);
+  }, [items, search, source, filterTension, filterSize]);
 
   const startEdit = (row: CatalogRow) => {
     setEditingId(row.id);
@@ -244,24 +249,72 @@ function Catalogo() {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar código, descrição, cor..."
-          className="input max-w-md flex-1"
-        />
-        <select value={source} onChange={(e) => setSource(e.target.value)} className="input w-56">
-          <option value="">Todas as origens</option>
-          {FONTES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <span className="ml-auto rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
-          {filtered.length} resultados
-        </span>
+      {/* Barra de filtros */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar código, descrição, cor..."
+            className="input max-w-md flex-1"
+          />
+          <select value={source} onChange={(e) => setSource(e.target.value)} className="input w-44">
+            <option value="">Todas as origens</option>
+            {FONTES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <span className="ml-auto rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+            {filtered.length} resultados
+          </span>
+        </div>
+
+        {/* Chips tensão */}
+        {uniqueTensions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground mr-1">Tensão:</span>
+            {uniqueTensions.map((t) => {
+              const active = filterTension === t;
+              return (
+                <button
+                  key={t}
+                  onClick={() => setFilterTension(active ? "" : t)}
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors
+                    ${active
+                      ? (t === "127V" ? "bg-blue-600 text-white border-blue-600"
+                        : t === "220V" ? "bg-orange-600 text-white border-orange-600"
+                        : "bg-teal-600 text-white border-teal-600")
+                      : (tensionTone[t] ?? defaultTone)
+                    }`}
+                >
+                  {t}
+                  {active && <X className="ml-1 h-2.5 w-2.5" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Chips tamanho */}
+        {uniqueSizes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground mr-1">Tamanho:</span>
+            {uniqueSizes.map((s) => {
+              const active = filterSize === String(s);
+              return (
+                <button
+                  key={s}
+                  onClick={() => setFilterSize(active ? "" : String(s))}
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors
+                    ${active ? "bg-foreground text-background border-foreground" : "bg-muted text-muted-foreground border-border"}`}
+                >
+                  {s} cm
+                  {active && <X className="ml-1 h-2.5 w-2.5" />}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {error && (
@@ -316,19 +369,33 @@ function Catalogo() {
                 ) : (
                   <tr key={item.id} className="border-b last:border-0 hover:bg-muted/40">
                     <td className="px-3 py-2">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          sourceTone[item.fonte] ?? "bg-muted text-muted-foreground"
-                        }`}
-                      >
+                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${sourceTone[item.fonte] ?? defaultTone}`}>
                         {item.fonte}
                       </span>
                     </td>
                     <td className="px-3 py-2 tabular-nums text-muted-foreground">{item.codigo}</td>
                     <td className="px-3 py-2 font-medium">{item.descricao}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{item.categoria || "-"}</td>
-                    <td className="px-3 py-2 tabular-nums text-muted-foreground">{item.tamanho ?? "-"}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{item.tensao || "-"}</td>
+                    <td className="px-3 py-2">
+                      {item.categoria ? (
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${typeTone[item.categoria] ?? defaultTone}`}>
+                          {item.categoria}
+                        </span>
+                      ) : <span className="text-muted-foreground">-</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      {item.tamanho != null ? (
+                        <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
+                          {item.tamanho} cm
+                        </span>
+                      ) : <span className="text-muted-foreground">-</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      {item.tensao ? (
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${tensionTone[item.tensao] ?? defaultTone}`}>
+                          {item.tensao}
+                        </span>
+                      ) : <span className="text-muted-foreground">-</span>}
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">{item.cor || "-"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{item.calculavel}</td>
                     <td className="px-3 py-2">

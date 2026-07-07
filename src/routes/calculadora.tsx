@@ -1,9 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Printer, Loader2 } from "lucide-react";
+import { Printer, Loader2, X } from "lucide-react";
 import { PrintArea, PrintHeader, usePrint } from "@/lib/print";
 import { fetchProducts, normalize, type ProductWithComponents } from "@/lib/db";
+import {
+  typeTone, typeActiveTone,
+  tensionTone, tensionActiveTone,
+  defaultTone, defaultActiveTone,
+} from "@/lib/badges";
 
 export const Route = createFileRoute("/calculadora")({
   head: () => ({
@@ -25,22 +30,24 @@ function Calculadora() {
     queryFn: fetchProducts,
   });
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch]     = useState("");
   const [category, setCategory] = useState("");
-  const [size, setSize] = useState("");
-  const [tension, setTension] = useState("");
-  const [color, setColor] = useState("");
+  const [size, setSize]         = useState("");
+  const [tension, setTension]   = useState("");
+  const [color, setColor]       = useState("");
   const [quantity, setQuantity] = useState(1);
   const [selectedCode, setSelectedCode] = useState<string>("");
   const print = usePrint();
 
+  // Opções únicas derivadas do catálogo
   const filters = useMemo(() => ({
     categories: unique(products.map((p) => p.categoria).filter(Boolean)),
-    sizes: unique(products.map((p) => p.tamanho).filter((x): x is number => x != null)).map(String),
-    tensions: unique(products.map((p) => p.tensao).filter(Boolean)),
-    colors: unique(products.map((p) => p.cor ?? "").filter(Boolean)) as string[],
+    sizes:      unique(products.map((p) => p.tamanho).filter((x): x is number => x != null)).map(String),
+    tensions:   unique(products.map((p) => p.tensao).filter(Boolean)),
+    colors:     unique(products.map((p) => p.cor ?? "").filter(Boolean)) as string[],
   }), [products]);
 
+  // Produtos após todos os filtros
   const filtered = useMemo(() => {
     const q = normalize(search);
     return products.filter((p) => {
@@ -52,6 +59,28 @@ function Calculadora() {
       return true;
     });
   }, [products, search, category, size, tension, color]);
+
+  // Contagem por valor de filtro (sem aplicar aquele filtro) para mostrar nos chips
+  const countBy = useMemo(() => {
+    const base = (exclude: "cat" | "size" | "tension" | "color") =>
+      products.filter((p) => {
+        const q = normalize(search);
+        if (q && !normalize(p.codigo).includes(q) && !normalize(p.descricao).includes(q)) return false;
+        if (exclude !== "cat"     && category && p.categoria !== category) return false;
+        if (exclude !== "size"    && size     && String(p.tamanho) !== size) return false;
+        if (exclude !== "tension" && tension  && p.tensao !== tension) return false;
+        if (exclude !== "color"   && color    && p.cor !== color) return false;
+        return true;
+      });
+    return {
+      category: (v: string) => base("cat").filter((p) => p.categoria === v).length,
+      size:     (v: string) => base("size").filter((p) => String(p.tamanho) === v).length,
+      tension:  (v: string) => base("tension").filter((p) => p.tensao === v).length,
+      color:    (v: string) => base("color").filter((p) => p.cor === v).length,
+    };
+  }, [products, search, category, size, tension, color]);
+
+  const hasFilters = category || size || tension || color;
 
   const selected: ProductWithComponents | undefined =
     filtered.find((p) => p.codigo === selectedCode) ?? filtered[0];
@@ -70,12 +99,122 @@ function Calculadora() {
       {isLoading ? (
         <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)]">
-          <aside className="space-y-4 rounded-lg border bg-surface p-5 shadow-sm">
+        <div className="grid gap-5 lg:grid-cols-[400px_minmax(0,1fr)]">
+          <aside className="space-y-5 rounded-lg border bg-surface p-5 shadow-sm">
+            {/* Busca */}
             <Field label="Buscar ventilador">
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Código ou descrição" className="input" />
             </Field>
-            <Field label="Produto final">
+
+            {/* Chips — Tipo (categoria) */}
+            <div>
+              <span className="mb-2 block text-sm font-semibold">
+                Tipo
+                {category && (
+                  <button onClick={() => setCategory("")} className="ml-2 text-xs font-normal text-muted-foreground hover:text-destructive">
+                    limpar
+                  </button>
+                )}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {filters.categories.map((cat) => {
+                  const active  = category === cat;
+                  const count   = countBy.category(cat);
+                  const base    = typeTone[cat]       ?? defaultTone;
+                  const activeC = typeActiveTone[cat] ?? defaultActiveTone;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setCategory(active ? "" : cat)}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${active ? activeC : base} ${count === 0 && !active ? "opacity-40" : ""}`}
+                    >
+                      {cat}
+                      <span className={`rounded-full px-1 text-[10px] ${active ? "bg-white/20" : "bg-black/10 dark:bg-white/10"}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Chips — Tamanho */}
+            <div>
+              <span className="mb-2 block text-sm font-semibold">
+                Tamanho
+                {size && (
+                  <button onClick={() => setSize("")} className="ml-2 text-xs font-normal text-muted-foreground hover:text-destructive">
+                    limpar
+                  </button>
+                )}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {filters.sizes.map((s) => {
+                  const active = size === s;
+                  const count  = countBy.size(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setSize(active ? "" : s)}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${active ? defaultActiveTone : defaultTone} ${count === 0 && !active ? "opacity-40" : ""}`}
+                    >
+                      {s} cm
+                      <span className={`rounded-full px-1 text-[10px] ${active ? "bg-white/20" : "bg-black/10 dark:bg-white/10"}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Chips — Tensão */}
+            <div>
+              <span className="mb-2 block text-sm font-semibold">
+                Tensão
+                {tension && (
+                  <button onClick={() => setTension("")} className="ml-2 text-xs font-normal text-muted-foreground hover:text-destructive">
+                    limpar
+                  </button>
+                )}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {filters.tensions.map((t) => {
+                  const active  = tension === t;
+                  const count   = countBy.tension(t);
+                  const base    = tensionTone[t]       ?? defaultTone;
+                  const activeC = tensionActiveTone[t] ?? defaultActiveTone;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setTension(active ? "" : t)}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${active ? activeC : base} ${count === 0 && !active ? "opacity-40" : ""}`}
+                    >
+                      {t}
+                      <span className={`rounded-full px-1 text-[10px] ${active ? "bg-white/20" : "bg-black/10 dark:bg-white/10"}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Select — Cor (muitas opções, mantém select) */}
+            <Select label="Cor" value={color} onChange={setColor} options={filters.colors} allLabel="Todas as cores" />
+
+            {/* Limpar todos os filtros */}
+            {hasFilters && (
+              <button
+                onClick={() => { setCategory(""); setSize(""); setTension(""); setColor(""); }}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+              >
+                <X className="h-3 w-3" /> Limpar todos os filtros
+              </button>
+            )}
+
+            {/* Produto selecionado */}
+            <Field label={`Produto final (${filtered.length})`}>
               <select value={selected?.codigo ?? ""} onChange={(e) => setSelectedCode(e.target.value)} className="input">
                 {filtered.length ? (
                   filtered.map((p) => (
@@ -88,15 +227,12 @@ function Calculadora() {
                 )}
               </select>
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Select label="Categoria" value={category} onChange={setCategory} options={filters.categories} allLabel="Todas" />
-              <Select label="Tamanho" value={size} onChange={setSize} options={filters.sizes} format={(v) => `${v} cm`} allLabel="Todos" />
-              <Select label="Tensão" value={tension} onChange={setTension} options={filters.tensions} allLabel="Todas" />
-              <Select label="Cor" value={color} onChange={setColor} options={filters.colors} allLabel="Todas" />
-            </div>
+
+            {/* Quantidade */}
             <Field label="Quantidade">
               <input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) | 0))} className="input" />
             </Field>
+
             <button
               onClick={print}
               disabled={!selected}
@@ -113,10 +249,29 @@ function Calculadora() {
                   <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Selecionado</p>
                   <h2 className="mt-1 text-xl font-black">{selected?.descricao ?? "—"}</h2>
                   {selected && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {selected.codigo} · {selected.categoria} · {selected.tamanho ?? "-"} cm · {selected.tensao}
-                      {selected.cor ? ` · ${selected.cor}` : ""}
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground font-mono">{selected.codigo}</span>
+                      {selected.categoria && (
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${typeTone[selected.categoria] ?? defaultTone}`}>
+                          {selected.categoria}
+                        </span>
+                      )}
+                      {selected.tamanho && (
+                        <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                          {selected.tamanho} cm
+                        </span>
+                      )}
+                      {selected.tensao && (
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${tensionTone[selected.tensao] ?? defaultTone}`}>
+                          {selected.tensao}
+                        </span>
+                      )}
+                      {selected.cor && (
+                        <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                          {selected.cor}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-right">
@@ -218,17 +373,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function Select({
-  label, value, onChange, options, allLabel, format,
+  label, value, onChange, options, allLabel,
 }: {
   label: string; value: string; onChange: (v: string) => void; options: string[]; allLabel: string;
-  format?: (v: string) => string;
 }) {
   return (
     <Field label={label}>
       <select value={value} onChange={(e) => onChange(e.target.value)} className="input">
         <option value="">{allLabel}</option>
         {options.map((o) => (
-          <option key={o} value={o}>{format ? format(o) : o}</option>
+          <option key={o} value={o}>{o}</option>
         ))}
       </select>
     </Field>
