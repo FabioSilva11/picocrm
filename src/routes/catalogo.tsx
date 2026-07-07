@@ -217,7 +217,12 @@ function Catalogo() {
                   if (!payload.codigo || !payload.descricao) continue;
                   const parsed = catalogItemSchema.safeParse(payload);
                   if (!parsed.success) continue;
-                  await supabase.from("catalog_items").upsert(payload, { onConflict: "codigo" });
+                  const existing = items.find((it) => it.codigo === payload.codigo);
+                  if (existing) {
+                    await supabase.from("catalog_items").update(payload).eq("id", existing.id);
+                  } else {
+                    await supabase.from("catalog_items").insert(payload);
+                  }
                   ok++;
                 }
                 toast.success(`${ok} itens importados`);
