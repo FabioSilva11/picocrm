@@ -71,6 +71,8 @@ function validate(row: Draft): string | null {
 
 function Catalogo() {
   const qc = useQueryClient();
+  useRealtime("catalog_items", [["catalog_items"]]);
+  const fileRef = useRef<HTMLInputElement>(null);
   const { data: items = [], isLoading, error } = useQuery({
     queryKey: ["catalog_items"],
     queryFn: fetchItems,
