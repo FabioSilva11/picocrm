@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtime } from "@/hooks/useRealtime";
 import type { DbSalesOrder, DbCustomer } from "@/lib/db";
 
 export const Route = createFileRoute("/vendas")({
@@ -19,6 +20,7 @@ function money(cents: number) {
 
 function Vendas() {
   const qc = useQueryClient();
+  useRealtime("sales_orders", [["sales_orders"]]);
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["sales_orders"],
     queryFn: async () => {
@@ -93,7 +95,11 @@ function Vendas() {
             {isLoading && <tr><td colSpan={5} className="p-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
             {orders.map((o) => (
               <tr key={o.id} className="border-b last:border-0 hover:bg-muted/40">
-                <td className="p-2 font-medium">{o.customers?.name || <span className="text-muted-foreground">—</span>}</td>
+                <td className="p-2 font-medium">
+                  <Link to="/vendas/$id" params={{ id: o.id }} className="inline-flex items-center gap-1 hover:text-primary">
+                    <FileText className="h-3.5 w-3.5" /> {o.customers?.name || <span className="text-muted-foreground">— sem cliente</span>}
+                  </Link>
+                </td>
                 <td className="p-2">
                   <select value={o.status} onChange={(e) => setStatus.mutate({ id: o.id, status: e.target.value })} className="input h-8 w-32 text-xs">
                     {statusOpts.map((s) => <option key={s}>{s}</option>)}
@@ -112,7 +118,7 @@ function Vendas() {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted-foreground">Itens do pedido e valor serão adicionados na próxima iteração.</p>
+      <p className="text-xs text-muted-foreground">Clique no cliente para abrir o pedido e adicionar itens com preço.</p>
     </div>
   );
 }

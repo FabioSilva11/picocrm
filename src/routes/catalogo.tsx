@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Save, Trash2, X, Loader2 } from "lucide-react";
+import { Pencil, Plus, Save, Trash2, X, Loader2, Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { catalogItemSchema, normalize } from "@/lib/db";
+import { useRealtime } from "@/hooks/useRealtime";
+import { toCSV, downloadCSV, parseCSV } from "@/lib/csv";
 
 export const Route = createFileRoute("/catalogo")({
   head: () => ({
@@ -69,6 +71,8 @@ function validate(row: Draft): string | null {
 
 function Catalogo() {
   const qc = useQueryClient();
+  useRealtime("catalog_items", [["catalog_items"]]);
+  const fileRef = useRef<HTMLInputElement>(null);
   const { data: items = [], isLoading, error } = useQuery({
     queryKey: ["catalog_items"],
     queryFn: fetchItems,
@@ -164,15 +168,80 @@ function Catalogo() {
             {items.length} itens salvos no Lovable Cloud.
           </p>
         </div>
-        <button
-          onClick={() => {
-            setCreating(true);
-            setNewRow(emptyDraft());
-          }}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" /> Novo item
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              const csv = toCSV(
+                items.map((i) => ({
+                  fonte: i.fonte, codigo: i.codigo, descricao: i.descricao,
+                  categoria: i.categoria, tamanho: i.tamanho ?? "", tensao: i.tensao,
+                  cor: i.cor ?? "", calculavel: i.calculavel,
+                })),
+                ["fonte", "codigo", "descricao", "categoria", "tamanho", "tensao", "cor", "calculavel"],
+              );
+              downloadCSV(`catalogo-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+            }}
+            className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-semibold hover:bg-muted"
+          >
+            <Download className="h-4 w-4" /> Exportar
+          </button>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-semibold hover:bg-muted"
+          >
+            <Upload className="h-4 w-4" /> Importar
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (!f) return;
+              try {
+                const rows = parseCSV(await f.text());
+                let ok = 0;
+                for (const r of rows) {
+                  const payload = {
+                    fonte: (r.fonte || "Estoque") as "Ventilador" | "Motor" | "Estoque",
+                    codigo: (r.codigo || "").trim(),
+                    descricao: (r.descricao || "").trim(),
+                    categoria: r.categoria || "",
+                    tamanho: r.tamanho ? Number(r.tamanho) : null,
+                    tensao: r.tensao || "",
+                    cor: r.cor || null,
+                    calculavel: (r.calculavel === "Sim" ? "Sim" : "Nao") as "Sim" | "Nao",
+                  };
+                  if (!payload.codigo || !payload.descricao) continue;
+                  const parsed = catalogItemSchema.safeParse(payload);
+                  if (!parsed.success) continue;
+                  const existing = items.find((it) => it.codigo === payload.codigo);
+                  if (existing) {
+                    await supabase.from("catalog_items").update(payload).eq("id", existing.id);
+                  } else {
+                    await supabase.from("catalog_items").insert(payload);
+                  }
+                  ok++;
+                }
+                toast.success(`${ok} itens importados`);
+                invalidate();
+              } catch (err) {
+                toast.error((err as Error).message);
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              setCreating(true);
+              setNewRow(emptyDraft());
+            }}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" /> Novo item
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-3">

@@ -385,6 +385,14 @@ export type Database = {
         }
         Returns: string
       }
+      complete_production_order: {
+        Args: { _order_id: string }
+        Returns: undefined
+      }
+      recalc_sales_order_total: {
+        Args: { _order_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
