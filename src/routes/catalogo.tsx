@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Save, Trash2, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { catalog, normalize } from "@/lib/catalog";
+import { catalogItemSchema, normalize } from "@/lib/db";
 
 export const Route = createFileRoute("/catalogo")({
   head: () => ({
@@ -30,6 +31,8 @@ interface CatalogRow {
   calculavel: string;
 }
 
+type Draft = Omit<CatalogRow, "id">;
+
 const sourceTone: Record<string, string> = {
   Ventilador: "bg-primary/10 text-primary",
   Motor: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
@@ -38,7 +41,7 @@ const sourceTone: Record<string, string> = {
 
 const FONTES = ["Ventilador", "Motor", "Estoque"];
 
-const emptyDraft = (): Omit<CatalogRow, "id"> => ({
+const emptyDraft = (): Draft => ({
   fonte: "Estoque",
   codigo: "",
   descricao: "",
@@ -53,9 +56,15 @@ async function fetchItems(): Promise<CatalogRow[]> {
   const { data, error } = await supabase
     .from("catalog_items")
     .select("id,fonte,codigo,descricao,categoria,tamanho,tensao,cor,calculavel")
-    .order("codigo", { ascending: true });
+    .order("codigo");
   if (error) throw error;
   return data as CatalogRow[];
+}
+
+function validate(row: Draft): string | null {
+  const parsed = catalogItemSchema.safeParse(row);
+  if (parsed.success) return null;
+  return parsed.error.issues[0]?.message ?? "Dados inválidos";
 }
 
 function Catalogo() {
@@ -68,33 +77,41 @@ function Catalogo() {
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Omit<CatalogRow, "id">>(emptyDraft());
+  const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [creating, setCreating] = useState(false);
-  const [newRow, setNewRow] = useState<Omit<CatalogRow, "id">>(emptyDraft());
+  const [newRow, setNewRow] = useState<Draft>(emptyDraft());
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["catalog_items"] });
 
   const createMut = useMutation({
-    mutationFn: async (row: Omit<CatalogRow, "id">) => {
+    mutationFn: async (row: Draft) => {
+      const err = validate(row);
+      if (err) throw new Error(err);
       const { error } = await supabase.from("catalog_items").insert(row);
       if (error) throw error;
     },
     onSuccess: () => {
+      toast.success("Item adicionado");
       invalidate();
       setCreating(false);
       setNewRow(emptyDraft());
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const updateMut = useMutation({
-    mutationFn: async ({ id, row }: { id: string; row: Omit<CatalogRow, "id"> }) => {
+    mutationFn: async ({ id, row }: { id: string; row: Draft }) => {
+      const err = validate(row);
+      if (err) throw new Error(err);
       const { error } = await supabase.from("catalog_items").update(row).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
+      toast.success("Item atualizado");
       invalidate();
       setEditingId(null);
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const deleteMut = useMutation({
@@ -102,7 +119,11 @@ function Catalogo() {
       const { error } = await supabase.from("catalog_items").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: invalidate,
+    onSuccess: () => {
+      toast.success("Item removido");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const filtered = useMemo(() => {
@@ -126,14 +147,11 @@ function Catalogo() {
     setDraft(rest);
   };
 
-  const saveEdit = () => {
-    if (!editingId) return;
-    updateMut.mutate({ id: editingId, row: draft });
-  };
-
   const remove = (row: CatalogRow) => {
-    if (!confirm(`Excluir "${row.codigo} — ${row.descricao}"?`)) return;
-    deleteMut.mutate(row.id);
+    toast(`Excluir ${row.codigo}?`, {
+      description: row.descricao,
+      action: { label: "Excluir", onClick: () => deleteMut.mutate(row.id) },
+    });
   };
 
   return (
@@ -143,7 +161,7 @@ function Catalogo() {
           <p className="text-xs font-bold uppercase tracking-widest text-primary">Catálogo</p>
           <h1 className="mt-1 text-3xl font-black tracking-tight">Todos os itens</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {items.length} itens salvos no Lovable Cloud · {catalog.filters.sources.length} origens.
+            {items.length} itens salvos no Lovable Cloud.
           </p>
         </div>
         <button
@@ -179,7 +197,7 @@ function Catalogo() {
 
       {error && (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar itens: {(error as Error).message}
+          Erro: {(error as Error).message}
         </div>
       )}
 
@@ -207,10 +225,8 @@ function Catalogo() {
                   onSave={() => createMut.mutate(newRow)}
                   onCancel={() => setCreating(false)}
                   saving={createMut.isPending}
-                  error={createMut.error as Error | null}
                 />
               )}
-
               {isLoading && (
                 <tr>
                   <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
@@ -218,17 +234,15 @@ function Catalogo() {
                   </td>
                 </tr>
               )}
-
               {filtered.map((item) =>
                 editingId === item.id ? (
                   <EditRow
                     key={item.id}
                     row={draft}
                     onChange={setDraft}
-                    onSave={saveEdit}
+                    onSave={() => updateMut.mutate({ id: editingId!, row: draft })}
                     onCancel={() => setEditingId(null)}
                     saving={updateMut.isPending}
-                    error={updateMut.error as Error | null}
                   />
                 ) : (
                   <tr key={item.id} className="border-b last:border-0 hover:bg-muted/40">
@@ -244,9 +258,7 @@ function Catalogo() {
                     <td className="px-3 py-2 tabular-nums text-muted-foreground">{item.codigo}</td>
                     <td className="px-3 py-2 font-medium">{item.descricao}</td>
                     <td className="px-3 py-2 text-muted-foreground">{item.categoria || "-"}</td>
-                    <td className="px-3 py-2 tabular-nums text-muted-foreground">
-                      {item.tamanho ?? "-"}
-                    </td>
+                    <td className="px-3 py-2 tabular-nums text-muted-foreground">{item.tamanho ?? "-"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{item.tensao || "-"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{item.cor || "-"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{item.calculavel}</td>
@@ -261,7 +273,6 @@ function Catalogo() {
                         </button>
                         <button
                           onClick={() => remove(item)}
-                          disabled={deleteMut.isPending}
                           className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           aria-label="Excluir"
                         >
@@ -272,7 +283,6 @@ function Catalogo() {
                   </tr>
                 ),
               )}
-
               {!isLoading && !filtered.length && !creating && (
                 <tr>
                   <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
@@ -289,116 +299,70 @@ function Catalogo() {
 }
 
 interface EditRowProps {
-  row: Omit<CatalogRow, "id">;
-  onChange: (row: Omit<CatalogRow, "id">) => void;
+  row: Draft;
+  onChange: (row: Draft) => void;
   onSave: () => void;
   onCancel: () => void;
   saving: boolean;
-  error: Error | null;
 }
 
-function EditRow({ row, onChange, onSave, onCancel, saving, error }: EditRowProps) {
-  const set = <K extends keyof Omit<CatalogRow, "id">>(k: K, v: Omit<CatalogRow, "id">[K]) =>
-    onChange({ ...row, [k]: v });
-
+function EditRow({ row, onChange, onSave, onCancel, saving }: EditRowProps) {
+  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => onChange({ ...row, [k]: v });
   return (
-    <>
-      <tr className="border-b bg-primary/5">
-        <td className="px-2 py-2">
-          <select
-            value={row.fonte}
-            onChange={(e) => set("fonte", e.target.value)}
-            className="input h-8 w-28 text-xs"
+    <tr className="border-b bg-primary/5">
+      <td className="px-2 py-2">
+        <select value={row.fonte} onChange={(e) => set("fonte", e.target.value)} className="input h-8 w-28 text-xs">
+          {FONTES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="px-2 py-2">
+        <input value={row.codigo} onChange={(e) => set("codigo", e.target.value)} placeholder="Código" className="input h-8 w-32 text-xs" />
+      </td>
+      <td className="px-2 py-2">
+        <input value={row.descricao} onChange={(e) => set("descricao", e.target.value)} placeholder="Descrição" className="input h-8 w-full text-xs" />
+      </td>
+      <td className="px-2 py-2">
+        <input value={row.categoria} onChange={(e) => set("categoria", e.target.value)} className="input h-8 w-28 text-xs" />
+      </td>
+      <td className="px-2 py-2">
+        <input
+          type="number"
+          value={row.tamanho ?? ""}
+          onChange={(e) => set("tamanho", e.target.value === "" ? null : Number(e.target.value))}
+          className="input h-8 w-20 text-xs"
+        />
+      </td>
+      <td className="px-2 py-2">
+        <input value={row.tensao} onChange={(e) => set("tensao", e.target.value)} className="input h-8 w-24 text-xs" />
+      </td>
+      <td className="px-2 py-2">
+        <input value={row.cor ?? ""} onChange={(e) => set("cor", e.target.value)} className="input h-8 w-24 text-xs" />
+      </td>
+      <td className="px-2 py-2">
+        <select value={row.calculavel} onChange={(e) => set("calculavel", e.target.value)} className="input h-8 w-20 text-xs">
+          <option>Sim</option>
+          <option>Nao</option>
+        </select>
+      </td>
+      <td className="px-2 py-2">
+        <div className="flex justify-end gap-1">
+          <button
+            onClick={onSave}
+            disabled={saving}
+            className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {FONTES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </td>
-        <td className="px-2 py-2">
-          <input
-            value={row.codigo}
-            onChange={(e) => set("codigo", e.target.value)}
-            placeholder="Código"
-            className="input h-8 w-32 text-xs"
-          />
-        </td>
-        <td className="px-2 py-2">
-          <input
-            value={row.descricao}
-            onChange={(e) => set("descricao", e.target.value)}
-            placeholder="Descrição"
-            className="input h-8 w-full text-xs"
-          />
-        </td>
-        <td className="px-2 py-2">
-          <input
-            value={row.categoria}
-            onChange={(e) => set("categoria", e.target.value)}
-            className="input h-8 w-28 text-xs"
-          />
-        </td>
-        <td className="px-2 py-2">
-          <input
-            type="number"
-            value={row.tamanho ?? ""}
-            onChange={(e) => set("tamanho", e.target.value === "" ? null : Number(e.target.value))}
-            className="input h-8 w-20 text-xs"
-          />
-        </td>
-        <td className="px-2 py-2">
-          <input
-            value={row.tensao}
-            onChange={(e) => set("tensao", e.target.value)}
-            className="input h-8 w-24 text-xs"
-          />
-        </td>
-        <td className="px-2 py-2">
-          <input
-            value={row.cor ?? ""}
-            onChange={(e) => set("cor", e.target.value)}
-            className="input h-8 w-24 text-xs"
-          />
-        </td>
-        <td className="px-2 py-2">
-          <select
-            value={row.calculavel}
-            onChange={(e) => set("calculavel", e.target.value)}
-            className="input h-8 w-20 text-xs"
-          >
-            <option>Sim</option>
-            <option>Nao</option>
-          </select>
-        </td>
-        <td className="px-2 py-2">
-          <div className="flex justify-end gap-1">
-            <button
-              onClick={onSave}
-              disabled={saving || !row.codigo || !row.descricao}
-              className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-              Salvar
-            </button>
-            <button
-              onClick={onCancel}
-              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-              aria-label="Cancelar"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
-      {error && (
-        <tr className="border-b bg-destructive/5">
-          <td colSpan={9} className="px-4 py-2 text-xs text-destructive">
-            {error.message}
-          </td>
-        </tr>
-      )}
-    </>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+            Salvar
+          </button>
+          <button onClick={onCancel} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label="Cancelar">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
