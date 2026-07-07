@@ -56,12 +56,335 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      product_components: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          group_name: string
+          id: string
+          position: number
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description: string
+          group_name?: string
+          id?: string
+          position?: number
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          group_name?: string
+          id?: string
+          position?: number
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_components_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_order_items: {
+        Row: {
+          id: string
+          order_id: string
+          product_code: string
+          product_description: string
+          quantity: number
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          product_code: string
+          product_description?: string
+          quantity?: number
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          product_code?: string
+          product_description?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "production_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_orders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          notes: string
+          status: string
+          total_pieces: number
+          total_units: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string
+          status?: string
+          total_pieces?: number
+          total_units?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string
+          status?: string
+          total_pieces?: number
+          total_units?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          categoria: string
+          codigo: string
+          cor: string | null
+          created_at: string
+          descricao: string
+          id: string
+          motor_codigo: string | null
+          motor_descricao: string | null
+          observacoes: string[]
+          tamanho: number | null
+          tensao: string
+          tipo_base: string
+          updated_at: string
+        }
+        Insert: {
+          categoria?: string
+          codigo: string
+          cor?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          motor_codigo?: string | null
+          motor_descricao?: string | null
+          observacoes?: string[]
+          tamanho?: number | null
+          tensao?: string
+          tipo_base?: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          codigo?: string
+          cor?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          motor_codigo?: string | null
+          motor_descricao?: string | null
+          observacoes?: string[]
+          tamanho?: number | null
+          tensao?: string
+          tipo_base?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales_order_items: {
+        Row: {
+          id: string
+          order_id: string
+          product_code: string
+          product_description: string
+          quantity: number
+          unit_price_cents: number
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          product_code: string
+          product_description?: string
+          quantity?: number
+          unit_price_cents?: number
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          product_code?: string
+          product_description?: string
+          quantity?: number
+          unit_price_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_orders: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          id: string
+          notes: string
+          status: string
+          total_cents: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          notes?: string
+          status?: string
+          total_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          notes?: string
+          status?: string
+          total_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock: {
+        Row: {
+          description: string
+          item_code: string
+          min_quantity: number
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          description?: string
+          item_code: string
+          min_quantity?: number
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          description?: string
+          item_code?: string
+          min_quantity?: number
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      stock_movements: {
+        Row: {
+          created_at: string
+          delta: number
+          description: string
+          id: string
+          item_code: string
+          reason: string
+          ref: string | null
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          description?: string
+          id?: string
+          item_code: string
+          reason?: string
+          ref?: string | null
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          description?: string
+          id?: string
+          item_code?: string
+          reason?: string
+          ref?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_stock_movement: {
+        Args: {
+          _delta: number
+          _description: string
+          _item_code: string
+          _reason: string
+          _ref?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
