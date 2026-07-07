@@ -165,7 +165,7 @@ export async function applyMovement(
     _description: description,
     _delta: delta,
     _reason: reason,
-    _ref: ref,
+    _ref: ref ?? undefined,
   });
   if (error) throw error;
 }
