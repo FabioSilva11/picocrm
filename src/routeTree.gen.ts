@@ -9,13 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VendasRouteImport } from './routes/vendas'
 import { Route as ProducaoRouteImport } from './routes/producao'
 import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as CargaRouteImport } from './routes/carga'
 import { Route as CalculadoraRouteImport } from './routes/calculadora'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProducaoIdRouteImport } from './routes/producao.$id'
 
+const VendasRoute = VendasRouteImport.update({
+  id: '/vendas',
+  path: '/vendas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProducaoRoute = ProducaoRouteImport.update({
   id: '/producao',
   path: '/producao',
@@ -24,6 +32,11 @@ const ProducaoRoute = ProducaoRouteImport.update({
 const EstoqueRoute = EstoqueRouteImport.update({
   id: '/estoque',
   path: '/estoque',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientesRoute = ClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogoRoute = CatalogoRouteImport.update({
@@ -46,22 +59,33 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProducaoIdRoute = ProducaoIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ProducaoRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calculadora': typeof CalculadoraRoute
   '/carga': typeof CargaRoute
   '/catalogo': typeof CatalogoRoute
+  '/clientes': typeof ClientesRoute
   '/estoque': typeof EstoqueRoute
-  '/producao': typeof ProducaoRoute
+  '/producao': typeof ProducaoRouteWithChildren
+  '/vendas': typeof VendasRoute
+  '/producao/$id': typeof ProducaoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calculadora': typeof CalculadoraRoute
   '/carga': typeof CargaRoute
   '/catalogo': typeof CatalogoRoute
+  '/clientes': typeof ClientesRoute
   '/estoque': typeof EstoqueRoute
-  '/producao': typeof ProducaoRoute
+  '/producao': typeof ProducaoRouteWithChildren
+  '/vendas': typeof VendasRoute
+  '/producao/$id': typeof ProducaoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,8 +93,11 @@ export interface FileRoutesById {
   '/calculadora': typeof CalculadoraRoute
   '/carga': typeof CargaRoute
   '/catalogo': typeof CatalogoRoute
+  '/clientes': typeof ClientesRoute
   '/estoque': typeof EstoqueRoute
-  '/producao': typeof ProducaoRoute
+  '/producao': typeof ProducaoRouteWithChildren
+  '/vendas': typeof VendasRoute
+  '/producao/$id': typeof ProducaoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -79,18 +106,33 @@ export interface FileRouteTypes {
     | '/calculadora'
     | '/carga'
     | '/catalogo'
+    | '/clientes'
     | '/estoque'
     | '/producao'
+    | '/vendas'
+    | '/producao/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calculadora' | '/carga' | '/catalogo' | '/estoque' | '/producao'
+  to:
+    | '/'
+    | '/calculadora'
+    | '/carga'
+    | '/catalogo'
+    | '/clientes'
+    | '/estoque'
+    | '/producao'
+    | '/vendas'
+    | '/producao/$id'
   id:
     | '__root__'
     | '/'
     | '/calculadora'
     | '/carga'
     | '/catalogo'
+    | '/clientes'
     | '/estoque'
     | '/producao'
+    | '/vendas'
+    | '/producao/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -98,12 +140,21 @@ export interface RootRouteChildren {
   CalculadoraRoute: typeof CalculadoraRoute
   CargaRoute: typeof CargaRoute
   CatalogoRoute: typeof CatalogoRoute
+  ClientesRoute: typeof ClientesRoute
   EstoqueRoute: typeof EstoqueRoute
-  ProducaoRoute: typeof ProducaoRoute
+  ProducaoRoute: typeof ProducaoRouteWithChildren
+  VendasRoute: typeof VendasRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/vendas': {
+      id: '/vendas'
+      path: '/vendas'
+      fullPath: '/vendas'
+      preLoaderRoute: typeof VendasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/producao': {
       id: '/producao'
       path: '/producao'
@@ -116,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/estoque'
       fullPath: '/estoque'
       preLoaderRoute: typeof EstoqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clientes': {
+      id: '/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof ClientesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalogo': {
@@ -146,16 +204,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/producao/$id': {
+      id: '/producao/$id'
+      path: '/$id'
+      fullPath: '/producao/$id'
+      preLoaderRoute: typeof ProducaoIdRouteImport
+      parentRoute: typeof ProducaoRoute
+    }
   }
 }
+
+interface ProducaoRouteChildren {
+  ProducaoIdRoute: typeof ProducaoIdRoute
+}
+
+const ProducaoRouteChildren: ProducaoRouteChildren = {
+  ProducaoIdRoute: ProducaoIdRoute,
+}
+
+const ProducaoRouteWithChildren = ProducaoRoute._addFileChildren(
+  ProducaoRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalculadoraRoute: CalculadoraRoute,
   CargaRoute: CargaRoute,
   CatalogoRoute: CatalogoRoute,
+  ClientesRoute: ClientesRoute,
   EstoqueRoute: EstoqueRoute,
-  ProducaoRoute: ProducaoRoute,
+  ProducaoRoute: ProducaoRouteWithChildren,
+  VendasRoute: VendasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
