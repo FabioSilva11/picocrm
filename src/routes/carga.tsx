@@ -16,7 +16,7 @@ export const Route = createFileRoute("/carga")({
       { name: "description", content: "Consolide peças da carga, veja faltas no estoque e salve como ordem de produção." },
     ],
   }),
-  component: Carga;
+  component: Carga,
 });
 
 function Carga() {
