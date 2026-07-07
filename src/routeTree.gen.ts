@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
 import { Route as CargaRouteImport } from './routes/carga'
 import { Route as CalculadoraRouteImport } from './routes/calculadora'
 import { Route as IndexRouteImport } from './routes/index'
 
+const EstoqueRoute = EstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CatalogoRoute = CatalogoRouteImport.update({
   id: '/catalogo',
   path: '/catalogo',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/calculadora': typeof CalculadoraRoute
   '/carga': typeof CargaRoute
   '/catalogo': typeof CatalogoRoute
+  '/estoque': typeof EstoqueRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calculadora': typeof CalculadoraRoute
   '/carga': typeof CargaRoute
   '/catalogo': typeof CatalogoRoute
+  '/estoque': typeof EstoqueRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/calculadora': typeof CalculadoraRoute
   '/carga': typeof CargaRoute
   '/catalogo': typeof CatalogoRoute
+  '/estoque': typeof EstoqueRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calculadora' | '/carga' | '/catalogo'
+  fullPaths: '/' | '/calculadora' | '/carga' | '/catalogo' | '/estoque'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calculadora' | '/carga' | '/catalogo'
-  id: '__root__' | '/' | '/calculadora' | '/carga' | '/catalogo'
+  to: '/' | '/calculadora' | '/carga' | '/catalogo' | '/estoque'
+  id: '__root__' | '/' | '/calculadora' | '/carga' | '/catalogo' | '/estoque'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +76,18 @@ export interface RootRouteChildren {
   CalculadoraRoute: typeof CalculadoraRoute
   CargaRoute: typeof CargaRoute
   CatalogoRoute: typeof CatalogoRoute
+  EstoqueRoute: typeof EstoqueRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/estoque': {
+      id: '/estoque'
+      path: '/estoque'
+      fullPath: '/estoque'
+      preLoaderRoute: typeof EstoqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/catalogo': {
       id: '/catalogo'
       path: '/catalogo'
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalculadoraRoute: CalculadoraRoute,
   CargaRoute: CargaRoute,
   CatalogoRoute: CatalogoRoute,
+  EstoqueRoute: EstoqueRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
