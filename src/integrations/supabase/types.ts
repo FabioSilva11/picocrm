@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      catalog_items: {
+        Row: {
+          calculavel: string
+          categoria: string
+          codigo: string
+          cor: string | null
+          created_at: string
+          descricao: string
+          fonte: string
+          id: string
+          tamanho: number | null
+          tensao: string
+          updated_at: string
+        }
+        Insert: {
+          calculavel?: string
+          categoria?: string
+          codigo: string
+          cor?: string | null
+          created_at?: string
+          descricao: string
+          fonte?: string
+          id?: string
+          tamanho?: number | null
+          tensao?: string
+          updated_at?: string
+        }
+        Update: {
+          calculavel?: string
+          categoria?: string
+          codigo?: string
+          cor?: string | null
+          created_at?: string
+          descricao?: string
+          fonte?: string
+          id?: string
+          tamanho?: number | null
+          tensao?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
